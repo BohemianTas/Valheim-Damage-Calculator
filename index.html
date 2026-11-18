@@ -419,11 +419,15 @@ table.cmp td:first-child { color: var(--text-secondary); white-space: nowrap; }
 .p2m-name .pref { display: block; }
 #p2m-mobs td, #p2m-weapons td { white-space: nowrap; }
 .tag.warn { background: var(--warning-bg); color: var(--warning-ink); }
+.tag.blood { background: var(--critical-bg); color: var(--critical-ink); }
+#p2m-mhp { width: 120px; }
+#p2m-mhp-note { max-width: 380px; }
 .p2m-list li { margin: var(--s1) 0; }
 
 @media (max-width: 899px) {
   #p2m-w, #p2m-m, #p2m-ammo { width: 100%; }
-  .grp-fields .field.p2m-wide, #page-p2m .grp-fields .field:has(.seg), #page-p2m .grp-fields .field:has(#p2m-combat), #p2m-ws-f { flex-basis: 100%; }
+  .grp-fields .field.p2m-wide, #page-p2m .grp-fields .field:has(.seg), #page-p2m .grp-fields .field:has(#p2m-combat), #p2m-ws-f, #p2m-mhp-f { flex-basis: 100%; }
+  #p2m-mhp-note { max-width: none; }
   #page-p2m .seg { display: flex; }
   .p2m-twarn { color: var(--warning-ink); cursor: help; font-weight: 700; }
 .tile small { font-size: 14px; font-weight: 600; }
@@ -683,6 +687,7 @@ Weak ×1.5        VeryWeak ×2           SlightlyWeak ×1.25        Ignore → 0
     <label class="small"><input type="checkbox" id="p2m-bs"> backstab ครั้งแรก</label>
     <label class="small"><input type="checkbox" id="p2m-stg"> เป้ากำลัง stagger</label>
     <div class="field" id="p2m-ws-f"><label for="p2m-ws">จุดที่โดน</label><select id="p2m-ws"></select></div>
+    <div class="field" id="p2m-mhp-f"><label for="p2m-mhp">HP ที่หายไปของผู้เล่น (แต้ม)</label><input id="p2m-mhp" type="number" min="0" max="1000" step="1" value="0"><span class="small muted" id="p2m-mhp-note"></span></div>
     <div class="field" id="p2m-one-f"><span class="lbl">หลายลูกต่อการโจมตี</span><div class="seg" id="p2m-one"><button data-v="0">โดนทุกลูก</button><button data-v="1">โดนลูกเดียว</button></div></div>
   </div></div>
   <div class="grp grp-res" role="group" aria-labelledby="p2m-g-b"><div class="grp-title" id="p2m-g-b">บัฟ</div>
@@ -740,17 +745,20 @@ Weak ×1.5        VeryWeak ×2           SlightlyWeak ×1.25        Ignore → 0
 
 <section class="view formula" id="p2m-view-formula" hidden>
   <h2 style="margin-top:0">สูตรย่อ</h2>
-  <p class="hint">คิดต่อการโจมตี 1 ครั้ง ต่อเป้า 1 ตัว ต่อส่วนของดาเมจ 1 ส่วน (ตัวอาวุธ, projectile, Aoe ที่มันสร้าง, chain lightning proc) ตามลำดับในโค้ดเกม</p>
+  <p class="hint">คิดต่อการโจมตี 1 ครั้ง ต่อเป้า 1 ตัว ต่อส่วนของดาเมจ 1 ส่วน (ตัวอาวุธ, projectile, Aoe ที่มันสร้าง, chain lightning proc) ตามลำดับในโค้ดเกม ข้อ 1–11 ตรงกับเลขข้อในกล่อง “การคำนวณของ hit” ในแท็บคอมโบ ข้อที่ไม่มีผลในสถานะนั้นคูณ ×1</p>
   <ol>
     <li><b>ดาเมจอาวุธ</b> = <code>m_damages + m_damagesPerLevel × (ระดับ − 1)</code> ธนูและ crossbow บวกดาเมจกระสุน (ระดับ 1) <span class="muted">ItemData::GetDamage</span></li>
     <li><b>ท่า</b> × <code>m_damageMultiplier</code> ของท่า จังหวะสุดท้ายของคอมโบ melee ×2 ท่า Area (ค้อน sledge) × <code>m_lastChainDamageMultiplier</code> <span class="muted">Attack::ModifyDamage</span></li>
+    <li><b>HP ที่หายไป</b>: อาวุธสาย Blood (ป้าย 🩸, 19 ชิ้น เช่น Brutal Slayer, Bloodgeon, Blood Fang, ชุด Thunderblood) × <code>(1 + HP ที่หายไป × m_damageMultiplierPerMissingHP)</code> = 0.002 ต่อแต้ม: HP ที่หายไปคือ<b>จำนวนแต้ม</b> max HP − HP ตอนนี้ ไม่ใช่เปอร์เซ็นต์ และไม่มีเพดาน เช่น หายไป 200 แต้ม → ×1.40 ตั้งค่าที่ช่อง “HP ที่หายไปของผู้เล่น” ในแผง (เริ่มต้น 0) ส่วน <code>m_damageMultiplierByTotalHealthMissing</code> (คิดจากสัดส่วน HP) ไม่มีอาวุธไหนใช้ <span class="muted">@165743–165803</span></li>
     <li><b>skill</b>: <code>c = 0.4 + 0.6 × skill/100</code> สุ่ม uniform ระหว่าง <code>c − 0.15</code> ถึง <code>c + 0.15</code> (ตัดที่ 0–1) ค่าเฉลี่ยคือค่ากลาง ธนูคูณ % การง้างเพิ่ม skill จากบัฟบวกก่อนสุ่ม <span class="muted">Skills::GetRandomSkillFactor</span></li>
     <li><b>บัฟ</b>: × <code>m_damageModifier</code> เมื่อ skill ตรง แล้ว × <code>(1 + %ต่อประเภท)</code> ทีละบัฟ <span class="muted">SE_Stats::ModifyAttack</span></li>
-    <li><b>backstab</b> × <code>m_backstabBonus</code> ของอาวุธ (มอนสเตอร์ยังไม่ตื่นตัว ครั้งละไม่เกิน 1 ทุก 300 วินาที) และ <b>เป้ากำลัง stagger</b> ×2 <span class="muted">Character::RPC_Damage</span></li>
+    <li><b>backstab</b> × <code>m_backstabBonus</code> ของอาวุธ (มอนสเตอร์ยังไม่ตื่นตัว ครั้งละไม่เกิน 1 ทุก 300 วินาที) <span class="muted">Character::RPC_Damage</span></li>
+    <li><b>เป้ากำลัง stagger</b> ×2 <span class="muted">Character::RPC_Damage</span></li>
     <li><b>resistance</b> ของมอนสเตอร์ต่อประเภท: Weak ×1.5, Resistant ×0.5, VeryWeak ×2, VeryResistant ×0.25, SlightlyWeak ×1.25, SlightlyResistant ×0.75, Immune ×0 weak spot ใช้ค่าของจุดนั้นแทนของตัว <span class="muted">HitData::ApplyResistance</span></li>
     <li><b>Combat และผู้เล่น</b>: × <code>playerdamage</code> (Very Easy 1.25, Easy 1.10, Normal 1, Hard 0.85, Very Hard 0.70) × <code>1 / (1 + 0.3 × (ผู้เล่น − 1))</code> นับผู้เล่นไม่เกิน 5 <span class="muted">Character::ApplyDamage</span></li>
-    <li><b>DoT</b>: fire, poison, spirit (หลัง resistance) ไม่ลด HP ทันที แต่ tick ภายหลัง แต่ละ tick ผ่านขั้น 7 อีกรอบ ไฟ 5 tick ใน 5 วินาที spirit 6 tick ใน 3 วินาที ตีซ้ำแล้วทบกัน พิษแทนที่ก้อนเดิมเมื่อก้อนใหม่ใหญ่กว่าที่เหลือ</li>
-    <li><b>stagger</b>: แต่ละ hit เพิ่ม (blunt + slash + pierce + lightning หลังขั้น 7) × <code>m_staggerMultiplier</code> ของท่า ลงแถบของมอนสเตอร์ <span class="muted">Character::ApplyDamage @20321</span> เมื่อแถบถึงเกณฑ์ <code>max HP × m_staggerDamageFactor</code> (รวมผลของดาว จำนวนผู้เล่นไม่เปลี่ยน; 0 = stagger ไม่ได้) มอนสเตอร์ชะงัก รับดาเมจ ×2 ระหว่างนั้น และแถบถูกตั้งไว้ที่เกณฑ์ <span class="muted">AddStaggerDamage @21340–21400</span> แถบลดเองทุก fixed update <code>เกณฑ์ / 5</code> ต่อวินาที ไม่มีช่วงหน่วง ไม่ต่ำกว่า 0 (เต็มแล้วหมดใน 5 วินาที) <span class="muted">UpdateStagger @21562</span></li>
+    <li><b>DoT</b>: fire, poison, spirit (หลัง resistance) ไม่ลด HP ทันที แต่ tick ภายหลัง แต่ละ tick ผ่านขั้น 9 อีกรอบ ไฟ 5 tick ใน 5 วินาที spirit 6 tick ใน 3 วินาที ตีซ้ำแล้วทบกัน พิษแทนที่ก้อนเดิมเมื่อก้อนใหม่ใหญ่กว่าที่เหลือ</li>
+    <li><b>จำนวนลูกและโอกาส</b>: projectile หลายลูกต่อการโจมตีคูณจำนวนลูกที่โดน (หรือ 1 เมื่อเลือก “โดนลูกเดียว”) proc เช่น chain lightning คูณโอกาสในค่าเฉลี่ย (ค่าต่ำสุดไม่นับ ค่าสูงสุดนับเต็ม)</li>
+    <li><b>stagger</b>: แต่ละ hit เพิ่ม (blunt + slash + pierce + lightning หลังขั้น 9) × <code>m_staggerMultiplier</code> ของท่า ลงแถบของมอนสเตอร์ <span class="muted">Character::ApplyDamage @20321</span> เมื่อแถบถึงเกณฑ์ <code>max HP × m_staggerDamageFactor</code> (รวมผลของดาว จำนวนผู้เล่นไม่เปลี่ยน; 0 = stagger ไม่ได้) มอนสเตอร์ชะงัก รับดาเมจ ×2 ระหว่างนั้น และแถบถูกตั้งไว้ที่เกณฑ์ <span class="muted">AddStaggerDamage @21340–21400</span> แถบลดเองทุก fixed update <code>เกณฑ์ / 5</code> ต่อวินาที ไม่มีช่วงหน่วง ไม่ต่ำกว่า 0 (เต็มแล้วหมดใน 5 วินาที) <span class="muted">UpdateStagger @21562</span></li>
     <li><b>HP ของมอนสเตอร์</b> = <code>m_health × (ดาว + 1)</code> ดาวไม่เปลี่ยน resistance</li>
     <li><b>stamina ต่อการโจมตี</b> = <code>m_attackStamina × (1 + ของที่ใส่) × (1 + บัฟ) × (1 − 0.33 × skill/100)</code> ธนูบวก stamina ตอนง้างจนเต็ม crossbow บวกตอนรีโหลด <b>eitr</b> ใช้ค่าของท่า primary เสมอ × <code>(1 − 0.33 × skill/100)</code></li>
   </ol>
@@ -786,7 +794,7 @@ Weak ×1.5        VeryWeak ×2           SlightlyWeak ×1.25        Ignore → 0
   <h2>สมมติฐาน</h2>
   <ul class="hint p2m-list">
     <li>เป้าเดียว: ไม่คิดการแบ่งดาเมจเมื่อฟันโดนหลายตัวพร้อมกัน</li>
-    <li>world level 0 (ไม่มีเกราะมอนสเตอร์), ผู้เล่น level 1, HP ผู้เล่นเต็ม</li>
+    <li>world level 0 (ไม่มีเกราะมอนสเตอร์), ผู้เล่น level 1, HP ผู้เล่นเต็ม (ค่าเริ่มต้น เปลี่ยนได้ที่ “HP ที่หายไปของผู้เล่น” ซึ่งมีผลเฉพาะอาวุธสาย Blood ที่มีป้าย 🩸)</li>
     <li>ตัวเลขหลักใช้ค่าเฉลี่ยของตัวสุ่ม skill proc (เช่น chain lightning) คิดเป็น <code>โอกาส × ดาเมจ</code> ค่าต่ำสุดไม่นับ proc ค่าสูงสุดนับเต็ม</li>
     <li>คอมโบวนครบทุกจังหวะ backstab เฉพาะครั้งแรก (หลังโดนตีมอนสเตอร์ตื่นตัว) “เป้ากำลัง stagger” คิดทุก hit</li>
     <li>ไม้เท้าหรือของที่ยิงหลายลูก: “โดนทุกลูก” นับว่าทุกลูกโดนเป้าเดียวกัน “โดนลูกเดียว” นับลูกเดียวต่อส่วน ค่าจริงอยู่ระหว่างสองค่านี้</li>
@@ -2444,7 +2452,7 @@ document.getElementById("home-generated").textContent = VH.data().meta.generated
 
   // everything the page shows follows from S; the URL hash stores it (#p=p2m&...)
   var S = { weapon: "MaceIron", q: 4, attack: "primary", ammo: null, skill: 50, draw: 100, monster: "Troll",
-            backstab: false, staggered: false, ws: null, one: false, buffs: [], tab: "combo", step: 1,
+            backstab: false, staggered: false, ws: null, one: false, buffs: [], missingHp: 0, tab: "combo", step: 1,
             mSort: { key: "biomeI", dir: 1 }, wSort: { key: "rank", dir: 1 }, rby: "time", rq: "max", rskill: "", fbiome: "", fmain: true };
   function shared() { return VH.shared(); }
   function weapon() { return W[S.weapon]; }
@@ -2460,10 +2468,21 @@ document.getElementById("home-generated").textContent = VH.data().meta.generated
     var sh = shared(), w = over && over.weapon || weapon();
     var o = { attack: attackOf(w, S.attack), ammo: ammoFor(w, S.ammo), skill: S.skill, buffs: S.buffs.map(function (id) { return B[id]; }),
               monster: mstat(S.monster), stars: sh.stars, players: sh.players, combat: sh.combat, staggered: S.staggered,
-              weak_spot: S.ws, all_projectiles: !S.one, draw: S.draw / 100, backstab_first: S.backstab };
+              weak_spot: S.ws, all_projectiles: !S.one, draw: S.draw / 100, backstab_first: S.backstab, missing_hp: S.missingHp };
     for (var k in over || {}) if (k !== "weapon") o[k] = over[k];
     return o;
   }
+
+  // Blood weapons: damage x (1 + missing HP points x m_damageMultiplierPerMissingHP), no cap (Attack::ModifyDamage @165743)
+  function hpPer(w, atk) { return w[atk] ? w[atk].damage_per_missing_hp : 0; }
+  function hasHpBonus(w) { return !!(hpPer(w, "primary") || hpPer(w, "secondary")); }
+  function hpMult(w, atk) { return 1 + S.missingHp * hpPer(w, atk); }
+  function mul(x) { return x.toFixed(3).replace(/0$/, ""); }
+  function hpTip(per) {
+    return "ดาเมจ × (1 + HP ที่หายไป × " + per + "): ทุก 1 แต้ม HP ที่หายไป (max HP − HP ตอนนี้) ดาเมจ +" + +(per * 100).toFixed(3) +
+      "% ไม่มีเพดาน ตั้งค่าที่ช่อง “HP ที่หายไปของผู้เล่น” (Attack::ModifyDamage)";
+  }
+  function hpTag(w, atk) { var per = hpPer(w, atk); return per ? tag("🩸 HP หาย", "blood", hpTip(per)) : ""; }
 
   // attack timing at the panel's skill (bow draw and crossbow reload follow the skill level, buffs included)
   function timingOf(w, o) { return P2M.timing(w, o.attack, P2M.skillLevel(o.skill, w.skill, o.buffs)); }
@@ -2526,7 +2545,9 @@ document.getElementById("home-generated").textContent = VH.data().meta.generated
       ws.sort(function (a, b) { return biomeIndex(a.biome) - biomeIndex(b.biome) || (a.name < b.name ? -1 : 1); });
       if (!ws.length) return "";
       return '<optgroup label="' + esc(s[0] === "None" ? s[1] : s[0] + " (" + s[1] + ")") + '">' + ws.map(function (w) {
-        return '<option value="' + esc(w.prefab) + '">' + esc(w.name + (w.biome ? " · " + w.biome : "")) + "</option>";
+        var blood = hasHpBonus(w);
+        return '<option value="' + esc(w.prefab) + '"' + (blood ? ' title="' + esc(hpTip(hpPer(w, "primary"))) + '"' : "") + ">" +
+          esc(w.name + (w.biome ? " · " + w.biome : "") + (blood ? " 🩸" : "")) + "</option>";
       }).join("") + "</optgroup>";
     }).join("");
   })();
@@ -2618,6 +2639,7 @@ document.getElementById("home-generated").textContent = VH.data().meta.generated
   $("p2m-m").addEventListener("change", function () { setMonster(this.value); S.step = 1; render(); });
   $("p2m-skill").addEventListener("input", function () { S.skill = num("p2m-skill", 0, 100, 50); render(); });
   $("p2m-draw").addEventListener("input", function () { S.draw = num("p2m-draw", 0, 100, 100); render(); });
+  $("p2m-mhp").addEventListener("input", function () { S.missingHp = num("p2m-mhp", 0, 1000, 0); render(); });
   $("p2m-players").addEventListener("input", function () { VH.setShared({ players: num("p2m-players", 1, 10, 1) }); });
   $("p2m-combat").addEventListener("change", function () { VH.setShared({ combat: this.value }); });
   $("p2m-bs").addEventListener("change", function () { S.backstab = this.checked; render(); });
@@ -2648,6 +2670,10 @@ document.getElementById("home-generated").textContent = VH.data().meta.generated
     if (document.activeElement !== $("p2m-players")) $("p2m-players").value = sh.players;
     if (document.activeElement !== $("p2m-skill")) $("p2m-skill").value = S.skill;
     if (document.activeElement !== $("p2m-draw")) $("p2m-draw").value = S.draw;
+    if (document.activeElement !== $("p2m-mhp")) $("p2m-mhp").value = S.missingHp;
+    var per = hpPer(w, o.attack);
+    $("p2m-mhp-note").innerHTML = (per ? "🩸 +" + +(per * 100).toFixed(3) + "% ต่อ 1 แต้ม → ตอนนี้ <b>×" + mul(hpMult(w, o.attack)) + "</b>"
+      : "<b>ไม่มีผลกับ" + (hasHpBonus(w) ? "ท่านี้" : "อาวุธนี้") + "</b>") + " · มีผลเฉพาะอาวุธสาย Blood ที่มีป้าย 🩸 · 0 = HP เต็ม";
     $("p2m-bs").checked = S.backstab; $("p2m-stg").checked = S.staggered;
     $("p2m-ws-f").hidden = !mstat(S.monster).weak_spots.length;
     $("p2m-ws").value = S.ws === null ? "" : S.ws;
@@ -2662,12 +2688,13 @@ document.getElementById("home-generated").textContent = VH.data().meta.generated
     $("p2m-summary").innerHTML = "skill " + esc(w.skill) + " " + lvl + (lvl !== Math.floor(S.skill) ? " (รวมบัฟ)" : "") + " → ตัวสุ่ม <b>" + f2(rs.min) + "–" + f2(rs.max) +
       "</b> เฉลี่ย <b>" + f2(rs.mean) + "</b>" + (a.bow_draw && S.draw !== 100 ? " × ง้าง " + S.draw + "%" : "") +
       " · ฝั่งมอนสเตอร์ <b>×" + k.toFixed(3) + "</b> (Combat ×" + P2M.COMBAT[sh.combat] + ", ผู้เล่น " + n + (sh.players > 5 ? " (เกมนับไม่เกิน 5)" : "") + " → ×" + P2M.enemyScale(sh.players).toFixed(3) + ")" +
+      (per && S.missingHp ? " · HP หาย " + S.missingHp + " แต้ม → ×" + mul(hpMult(w, o.attack)) : "") +
       " · " + esc(monName(S.monster)) + " " + sh.stars + "★ HP <b>" + f1(hp) + "</b>" +
       (mstat(S.monster).stagger ? ", stagger เมื่อสะสม ≥ <b>" + f1(hp * mstat(S.monster).stagger) + "</b>" : ", stagger ไม่ได้");
     saveHash();
   }
 
-  // ---------- URL hash: #p=p2m&w=&q=&atk=&ammo=&skill=&draw=&m=&stars=&combat=&players=&bs=1&stg=1&ws=&one=1&buffs=&tab=
+  // ---------- URL hash: #p=p2m&w=&q=&atk=&ammo=&skill=&draw=&m=&stars=&combat=&players=&bs=1&stg=1&ws=&one=1&mhp=&buffs=&tab=
   // keys missing from a link keep the current value, so the top-bar link (#p=p2m) does not reset anything
   var written = null;
   function saveHash() {
@@ -2688,6 +2715,7 @@ document.getElementById("home-generated").textContent = VH.data().meta.generated
     if (S.staggered) q.set("stg", 1);
     if (S.ws !== null) q.set("ws", S.ws);
     if (S.one) q.set("one", 1);
+    if (S.missingHp) q.set("mhp", S.missingHp);
     if (S.buffs.length) q.set("buffs", S.buffs.join(","));
     if (S.rby !== "time") q.set("rby", S.rby);
     written = q.toString();
@@ -2705,6 +2733,7 @@ document.getElementById("home-generated").textContent = VH.data().meta.generated
     if (q.has("m") && D.monsters[q.get("m")]) setMonster(q.get("m"));
     if (q.has("skill")) S.skill = nOr("skill", 0, 100, 50);
     if (q.has("draw")) S.draw = nOr("draw", 0, 100, 100);
+    if (q.has("mhp")) S.missingHp = nOr("mhp", 0, 1000, 0);
     ["bs", "stg", "one"].forEach(function (k) { if (q.has(k)) S[{ bs: "backstab", stg: "staggered", one: "one" }[k]] = q.get(k) === "1"; });
     if (q.has("ws")) { var ws = parseInt(q.get("ws"), 10); S.ws = ws >= 0 && ws < mstat(S.monster).weak_spots.length ? ws : null; }
     if (q.has("buffs")) { var ids = q.get("buffs").split(","); S.buffs = D.buffs.map(function (b) { return b.id; }).filter(function (x) { return ids.indexOf(x) >= 0; }); }
@@ -2743,6 +2772,7 @@ document.getElementById("home-generated").textContent = VH.data().meta.generated
     if (r.backstab) t.push(tag(c.w.backstab_bonus > 1 ? "backstab ×" + c.w.backstab_bonus : "backstab (อาวุธนี้ ×1)"));
     if (S.staggered) t.push(tag("เป้า stagger ×2"));
     if (S.ws !== null) t.push(tag("weak spot"));
+    if (S.missingHp && hpPer(c.w, c.o.attack)) t.push(tag("🩸 HP หาย ×" + mul(hpMult(c.w, c.o.attack)), "blood", hpTip(hpPer(c.w, c.o.attack))));
     return t.join("") || '<span class="muted small">—</span>';
   }
   // one combo (or SHOTS shots): rows along the timeline, damage per hit at min/mean/max, stagger along the repeated combo
@@ -2847,20 +2877,31 @@ document.getElementById("home-generated").textContent = VH.data().meta.generated
     var rs = P2M.randomSkillRange(r.skill_level);
     var ln = function (k, v) { return '<tr><td class="k">' + k + "</td><td>" + v + "</td></tr>"; };
     var parts = r.parts.map(function (p) {
-      var s = p.steps, rows = [];
+      // every step always shows, numbered by position, in the order of the code (attackResult, then hitOnMonster);
+      // the same numbers as the formula tab's list
+      var s = p.steps, rows = [], n = 0;
+      var step = function (k, v) { rows.push(ln(++n + ". " + k, v)); };
+      var off = function (why) { return ' <span class="muted">' + why + " (×1)</span>"; };
       var mods = {}; P2M.RESIST.forEach(function (t) { if (s.resist[t] || s.staggered[t]) mods[t] = (s.mods[t] || "Normal") + " ×" + P2M.MOD_FACTOR[s.mods[t] || "Normal"]; });
-      rows.push(ln(p.via_attack ? "1. ดาเมจอาวุธ ★" + S.q + (o.ammo && c.a.type.indexOf("Projectile") >= 0 ? " + " + esc(o.ammo.name) : "") : "1. ดาเมจของ " + esc(p.label) + " เอง (ไม่ผ่านท่าและบัฟ)", chips(s.base)));
-      if (p.via_attack) rows.push(ln("2. × ท่า " + f2(r.mult) + (row.chain_last ? " (จังหวะสุดท้าย)" : ""), chips(s.mult)));
-      rows.push(ln("3. × skill " + (p.skill_times === 0 ? "(ไม่คิด skill)" : f2(r.skill_factor) + (p.skill_times === 2 ? " สองรอบ (Aoe::OnHit)" : "") +
-        ' <span class="muted">(สุ่ม ' + f2(rs.min) + "–" + f2(rs.max) + (c.a.bow_draw ? ", × ง้าง " + S.draw + "%" : "") + ")</span>"), chips(s.skill)));
-      if (p.via_attack && S.buffs.length) rows.push(ln("4. บัฟ", chips(s.buffs)));
-      if (row.backstab) rows.push(ln("5. backstab ×" + (p.backstab > 1 ? p.backstab : "1 (ไม่มีผล)"), chips(s.backstab)));
-      if (S.staggered) rows.push(ln("5. เป้ากำลัง stagger ×2", chips(s.staggered)));
-      rows.push(ln("6. resistance" + (S.ws !== null ? " (weak spot)" : ""), chips(s.resist, mods)));
-      rows.push(ln("7. × Combat × ผู้เล่น = ×" + s.k.toFixed(3) + " → ทันที", chips(s.instant) + " = <b>" + f1(P2M.total(s.instant)) + "</b>"));
-      if (Object.keys(s.dot).length) rows.push(ln("8. DoT (tick ภายหลัง, ×" + s.k.toFixed(3) + " แล้ว)", chips(s.dot)));
-      if (p.weight !== 1) rows.push(ln("× " + (p.count > 1 ? (S.one ? "นับลูกเดียว จาก " + p.count : p.count + " ลูก") : "") + (p.chance < 1 ? " โอกาส " + Math.round(p.chance * 100) + "%" : ""),
-        "ทันที " + f1(P2M.total(s.instant) * p.weight) + (Object.keys(s.dot).length ? ", DoT " + f1(P2M.total(s.dot) * p.weight) : "")));
+      var own = off("ส่วนนี้ใช้ดาเมจของตัวเอง ไม่ผ่านท่าและบัฟ");
+      step(p.via_attack ? "ดาเมจอาวุธ ★" + S.q + (o.ammo && c.a.type.indexOf("Projectile") >= 0 ? " + " + esc(o.ammo.name) : "") : "ดาเมจของ " + esc(p.label) + " เอง", chips(s.base));
+      var per = hpPer(w, o.attack), hpf = p.via_attack ? hpMult(w, o.attack) : 1, byAttack = {};
+      Object.keys(s.mult).forEach(function (t) { byAttack[t] = s.mult[t] / hpf; });
+      step("× ท่า" + (p.via_attack ? " " + f2(r.mult / hpf) + (row.chain_last ? " (จังหวะสุดท้าย)" : "") : own), chips(byAttack));
+      step("× HP ที่หายไป" + (!p.via_attack ? own : !per ? off((hasHpBonus(w) ? "ท่านี้" : "อาวุธนี้") + "ไม่มีความสามารถนี้") : !S.missingHp ? off("HP เต็ม") :
+        ": 1 + " + S.missingHp + " × " + per + " = ×" + mul(hpf) + ' <span class="muted">(Attack::ModifyDamage)</span>'), chips(s.mult));
+      step("× skill " + (p.skill_times === 0 ? off("ส่วนนี้ไม่คิด skill") : f2(r.skill_factor) + (p.skill_times === 2 ? " สองรอบ (Aoe::OnHit)" : "") +
+        ' <span class="muted">(สุ่ม ' + f2(rs.min) + "–" + f2(rs.max) + (c.a.bow_draw ? ", × ง้าง " + S.draw + "%" : "") + ")</span>"), chips(s.skill));
+      step("× บัฟ" + (!p.via_attack ? own : S.buffs.length ? "" : off("ไม่ได้เลือกบัฟ")), chips(s.buffs));
+      step("× backstab" + (!row.backstab ? off(S.backstab ? "เฉพาะ hit แรก" : "ไม่ได้เลือก") : p.backstab > 1 ? " ×" + p.backstab : off("อาวุธนี้ไม่มีโบนัส backstab")), chips(s.backstab));
+      step("× เป้ากำลัง stagger" + (S.staggered ? " ×2" : off("ไม่ได้เลือก")), chips(s.staggered));
+      step("resistance" + (S.ws !== null ? " (weak spot)" : ""), chips(s.resist, mods));
+      step("× Combat × ผู้เล่น = ×" + s.k.toFixed(3) + " → ทันที", chips(s.instant) + " = <b>" + f1(P2M.total(s.instant)) + "</b>");
+      var hasDot = Object.keys(s.dot).length > 0;
+      step("DoT" + (hasDot ? " (tick ภายหลัง, ×" + s.k.toFixed(3) + " แล้ว)" : ' <span class="muted">ไม่มี fire, poison, spirit</span>'), hasDot ? chips(s.dot) : '<span class="muted">0</span>');
+      step("× จำนวนลูกและโอกาส" + (p.weight === 1 ? off(p.count > 1 ? "นับลูกเดียว" : "1 ลูก ไม่ใช่ proc") :
+        " " + (p.count > 1 ? (S.one ? "นับลูกเดียว จาก " + p.count : p.count + " ลูก") : "") + (p.chance < 1 ? " โอกาส " + Math.round(p.chance * 100) + "%" : "")),
+        "ทันที " + f1(P2M.total(s.instant) * p.weight) + (hasDot ? ", DoT " + f1(P2M.total(s.dot) * p.weight) : ""));
       return '<div class="p2m-part"><h4>' + esc(p.label) + (p.note ? ' <span class="muted small">' + esc(p.note) + "</span>" : "") + '</h4><table class="steps">' + rows.join("") + "</table></div>";
     });
     var thr = c.sr.threshold;
@@ -2875,7 +2916,7 @@ document.getElementById("home-generated").textContent = VH.data().meta.generated
       '<div class="cols">' + parts.join("") + "</div>" +
       '<p class="small">รวม hit นี้: ทันที <b>' + f1(r.instant) + "</b> (ต่ำสุด " + f1(lo.instant) + ", สูงสุด " + f1(hi.instant) + ")" +
       (r.dot ? ", DoT <b>" + f1(r.dot) + "</b>" : "") + " · Combat " + COMBAT_NAMES[sh.combat] + ", ผู้เล่น " + sh.players + "</p>" +
-      '<p class="small">stagger จาก hit นี้: (blunt + slash + pierce + lightning หลังขั้น 7) × ตัวคูณ stagger ของท่า = ' + stgParts.join(" + ") + " = <b>" + f1(r.stagger) + "</b>" +
+      '<p class="small">stagger จาก hit นี้: (blunt + slash + pierce + lightning หลังขั้น 9) × ตัวคูณ stagger ของท่า = ' + stgParts.join(" + ") + " = <b>" + f1(r.stagger) + "</b>" +
       (thr > 0 ? " = " + Math.round(100 * r.stagger / thr) + "% ของเกณฑ์ " + f1(thr) : " (มอนสเตอร์ตัวนี้ stagger ไม่ได้)") +
       ' <span class="muted">Character::ApplyDamage @20321–20350</span></p>';
   }
@@ -2983,7 +3024,7 @@ document.getElementById("home-generated").textContent = VH.data().meta.generated
   var WPN_COLS = [
     { key: "rank", label: "#", num: true, up: true, cell: function (r) { return r.rank; } },
     { key: "name", label: "อาวุธ", up: true, cell: function (r) {
-      return '<span class="p2m-name">' + wIcon(r.w, 28) + "<span><b>" + esc(r.name) + "</b> ★" + r.q + (r.atk !== "primary" ? tag(r.atk) : "") +
+      return '<span class="p2m-name">' + wIcon(r.w, 28) + "<span><b>" + esc(r.name) + "</b> ★" + r.q + (r.atk !== "primary" ? tag(r.atk) : "") + hpTag(r.w, r.atk) +
         (r.ammo ? '<span class="small muted pref">+ ' + esc(r.ammo.name) + "</span>" : "") + "</span></span>"; } },
     { key: "skill", label: "skill", up: true, cell: function (r) { return esc(r.skill); } },
     { key: "hit", label: "ดาเมจต่อ hit", num: true, cell: function (r) { return "<b>" + f1(r.hit) + "</b>"; } },
