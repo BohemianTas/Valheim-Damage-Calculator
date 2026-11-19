@@ -1,0 +1,1 @@
+import{$ as e,It as t,Lt as n,a as r,t as i}from"./index-DLsobJ_H.js";var a=n(t(),1);function o(t){let[n,o]=e(),{settings:s,claimUrl:c}=i();(0,a.useLayoutEffect)(c,[c]),(0,a.useEffect)(()=>{let e=t(r(n,s));e.toString()!==n.toString()&&o(e,{replace:!0})},[n,s,t,o])}export{o as t};
