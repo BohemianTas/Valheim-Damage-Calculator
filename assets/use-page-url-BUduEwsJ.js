@@ -1,1 +1,0 @@
-import{Bt as e,n as t,nt as n,o as r,zt as i}from"./index-DGmCXoL5.js";var a=e(i(),1);function o(e){let[i,o]=n(),{settings:s,claimUrl:c}=t();(0,a.useLayoutEffect)(c,[c]),(0,a.useEffect)(()=>{let t=e(r(i,s));t.toString()!==i.toString()&&o(t,{replace:!0})},[i,s,e,o])}export{o as t};
