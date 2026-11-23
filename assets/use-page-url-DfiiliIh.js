@@ -1,1 +1,0 @@
-import{$ as e,It as t,Lt as n,n as r,o as i}from"./index-C0_a1OeB.js";var a=n(t(),1);function o(t){let[n,o]=e(),{settings:s,claimUrl:c}=r();(0,a.useLayoutEffect)(c,[c]),(0,a.useEffect)(()=>{let e=t(i(n,s));e.toString()!==n.toString()&&o(e,{replace:!0})},[n,s,t,o])}export{o as t};
