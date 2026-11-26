@@ -1,0 +1,1 @@
+import{Bt as e,Vt as t,n,r,rt as i,s as a}from"./index-B07V0S8t.js";var o=t(e(),1);function s(e){let[t]=i(),s=n(),{settings:c,claimUrl:l}=r();(0,o.useLayoutEffect)(l,[l]),(0,o.useEffect)(()=>{s(e(a(t,c)))},[t,c,e,s])}export{s as t};
